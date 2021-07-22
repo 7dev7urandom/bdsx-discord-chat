@@ -19,7 +19,7 @@ const client = new Client();
 let config: any;
 let channel: TextChannel;
 
-fsutil.readFile(path.join(__dirname, 'config.json')).then(data => {
+fsutil.readFile(path.join(fsutil.projectPath, 'discordconfig.json')).then(data => {
     config = JSON.parse(data);
     const { token } = config;
     client.login(token);
