@@ -26,7 +26,7 @@ fsutil.readFile(path.join(__dirname, 'config.json')).then(data => {
 });
 
 client.on('message', message => {
-    if(message.channel.id !== '866008874653319208') return;
+    if(message.channel.id !== config.channel) return;
     if(message.author.bot) return;
     // console.log("Message from discord " + message.content);
     if(bedrockServer.isLaunched()) {
@@ -37,7 +37,7 @@ client.on('message', message => {
 });
 
 client.on('ready', () => {
-    const tmpChannel = client.channels.get('866008874653319208');
+    const tmpChannel = client.channels.get(config.channel);
     if(!tmpChannel) throw new Error("Can't get the channel from discord");
     channel = tmpChannel as TextChannel;
 });
