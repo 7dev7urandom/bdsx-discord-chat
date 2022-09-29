@@ -38,7 +38,7 @@ function start(token: string, channelId: string) {
         if(config.discordPresenceEnabled) client.user?.setPresence({
             status: 'online',
             activities: [{
-                name: `${playerAmount.online} ${playerAmount.online === 1 ? config.discordPresence.singular : config.discordPresence.plural}${config.discordPresence.status}`,
+                name: `${playerAmount.online} ${playerAmount.online === 1 ? config.discordPresence.amountSingular : config.discordPresence.amountPlural}${config.discordPresence.status}`,
                 type: ActivityType.Playing
             }]
         });
@@ -73,7 +73,7 @@ function start(token: string, channelId: string) {
                 if(data.message === "+") playerAmount.online++;
                 else if(data.message === "-") playerAmount.online--;
                 if(data.message !== "stop") client.user?.setActivity({
-                    name: `${playerAmount.online} ${playerAmount.online === 1 ? config.discordPresence.singular : config.discordPresence.plural}${config.discordPresence.status}`,
+                    name: `${playerAmount.online} ${playerAmount.online === 1 ? config.discordPresence.amountSingular : config.discordPresence.amountPlural}${config.discordPresence.status}`,
                     type: ActivityType.Playing
                 });
                 else if(data.message === "stop") client.user?.setPresence({
