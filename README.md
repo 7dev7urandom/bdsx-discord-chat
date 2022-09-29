@@ -34,7 +34,7 @@ To use it, run the plugin once or make a `config.json` file in (bdsx root folder
         "start": "```diff\n+ <",
         "end": "> has left the server!\n```"
     },
-    "discordPresenceEnabled": true,
+    "discordPresenceEnabled": false,
     "discordPresence": {
         "amountSingular": "person",
         "amountPlural": "people",
