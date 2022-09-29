@@ -1,17 +1,43 @@
 import { fork, exec, ChildProcess } from "child_process";
 import { fsutil } from "bdsx/fsutil";
-import path = require("path");
 import { events } from "bdsx/event";
 import { MinecraftPacketIds } from "bdsx/bds/packetids";
 import { CANCEL } from "bdsx/common";
 import { bedrockServer } from "bdsx/launcher";
 import { command } from "bdsx/command";
+import { CommandResultType } from "bdsx/commandresult";
 import { CommandRawText } from "bdsx/bds/command";
 import { TextPacket } from "bdsx/bds/packets";
-import which = require("which");
+import { defaultConfig } from "./defaultconfig";
+import * as which from "which";
+import * as path from "path";
 
 let proc: ChildProcess;
 let config: any;
+const configPath = path.join(fsutil.projectPath, "plugin-configs/discord-chat/config.json");
+
+if (!fsutil.isFileSync(configPath)) {
+    const pcDir = path.join(fsutil.projectPath, "plugin-configs/");
+    const dcDir = path.join(fsutil.projectPath, "plugin-configs/discord-chat/");
+    if (!fsutil.isDirectorySync(pcDir)) {
+        fsutil.mkdir(pcDir).then(
+            (onfulfilled)=>{},
+            (onrejected)=>{ console.log(`[discord-chat] Error creating default config.json file ${onrejected}`)}
+        )
+    }
+    if (!fsutil.isDirectorySync(dcDir)) {
+        fsutil.mkdir(dcDir).then(
+            (onfulfilled)=>{},
+            (onrejected)=>{ console.log(`[discord-chat] Error creating default config.json file ${onrejected}`)}
+        )
+    }
+    if(!fsutil.isFileSync(configPath)){
+        fsutil.writeFile(configPath,JSON.stringify(defaultConfig, null, 2)).then(
+            (onfulfilled)=>{ console.log("[discord-chat] Created a default config.json file.\n[discord-chat] Please set your configuration values in the config.json!");},
+            (onrejected)=>{ console.log(`[discord-chat] Error creating default config.json file ${onrejected}`)}
+        )
+    }
+}
 
 which("node", {}, (err, nodePath) => {
     const notFound = () => {
@@ -32,13 +58,17 @@ which("node", {}, (err, nodePath) => {
             stdio: "inherit",
             execPath: nodePath,
         });
-        const configPath = path.join(fsutil.projectPath, "discordconfig.json");
-        console.log("Config found: " + configPath);
+        console.log("[discord-chat] Config found: " + configPath);
 
         fsutil.readFile(configPath).then((data) => {
             config = JSON.parse(data);
             const { channel, token } = config;
             proc.send({ event: "ready", token, channel });
+        });
+        proc.on("message", (data) => {
+            if (data.event === "command") {
+                if(data.command === "list") proc.send({event: "commandReturn", returnValue: listCommand()}) ;
+            }
         });
         proc.on("message", (data) => {
             if (data.event === "message") {
@@ -65,37 +95,61 @@ function tellAllRaw(text: string) {
     }
     packet.dispose();
 }
-
+function listCommand(){
+    const list = bedrockServer.executeCommand('list', CommandResultType.Data);
+    return list.data.statusMessage;
+}
 events.packetBefore(MinecraftPacketIds.Text).on((ev) => {
-    if (playerSettings.get(ev.name) === ChatSettings.All) {
-        proc.send({ event: "message", message: `${ev.name}: ${ev.message}` });
-        tellAllRaw(`<§9${ev.name}§r> ${ev.message}`);
+    if (config.forceGameChat || playerSettings.get(ev.name) === ChatSettings.All) {
+        proc.send({ event: "message", message: `${config.toDiscordChatPrefix.start}${ev.name}${config.toDiscordChatPrefix.end}${ev.message}` });
+        tellAllRaw(`${config.inGameChatPrefix.start}${ev.name}${config.inGameChatPrefix.end}${ev.message}`);
         return CANCEL;
     }
 });
 
 events.serverOpen.on(() => {
-    command.register("chat", "Changes chat target").overload(
-        ({ target }, origin) => {
-            if (!origin.getEntity()?.isPlayer()) return;
-            switch (target.text) {
-                case "g":
-                case "game":
-                    playerSettings.set(origin.getName(), ChatSettings.Game);
-                    break;
-                case "d":
-                case "discord":
-                case "a":
-                case "all":
-                    playerSettings.set(origin.getName(), ChatSettings.All);
-                    break;
+    if(config.discordStartStopMessagesEnabled) proc.send({ event: "message", message: config.discordStartMessage });
+    if(!config.forceGameChat){
+        command.register("chat", "Changes chat target").overload(
+            ({ target }, origin) => {
+                if (!origin.getEntity()?.isPlayer()) return;
+                switch (target.text) {
+                    case "g":
+                    case "game":
+                        playerSettings.set(origin.getName(), ChatSettings.Game);
+                        break;
+                    case "d":
+                    case "discord":
+                    case "a":
+                    case "all":
+                        playerSettings.set(origin.getName(), ChatSettings.All);
+                        break;
+                }
+            },
+            {
+                target: CommandRawText,
             }
-        },
-        {
-            target: CommandRawText,
-        }
-    );
+        ); 
+    }
+});
+
+events.playerJoin.on((evt)=>{
+    if(config.discordJoinLeftMessagesEnabled) proc.send({ event: "message", message: `${config.discordJoinMessage.start}${evt.player.getName()}${config.discordJoinMessage.end}` });
+    if(config.discordPresenceEnabled) proc.send({ event: "presence", message: "+"})
+});
+events.playerLeft.on((evt)=>{
+    if(config.discordJoinLeftMessagesEnabled) proc.send({ event: "message", message: `${config.discordLeftMessage.start}${evt.player.getName()}${config.discordLeftMessage.end}` });
+    if(config.discordPresenceEnabled) proc.send({ event: "presence", message: "-"})
+});
+
+events.serverLeave.on(() => {
+    proc.send({ event: "message", message: config.discordStopMessage });
+    if(config.discordPresenceEnabled) proc.send({ event: "presence", message: "stop"})
 });
 events.serverClose.on(() => {
     proc.send({ event: "destroy" });
 });
+
+export function sendToDiscord(msg: string) {
+    proc.send({ event: "message", message: msg});
+}
