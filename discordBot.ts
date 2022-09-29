@@ -38,7 +38,7 @@ function start(token: string, channelId: string) {
         if(config.discordPresenceEnabled) client.user?.setPresence({
             status: 'online',
             activities: [{
-                name: `${playerAmount.online} ${playerAmount.online === 1 ? "person" : "people"} currently on ${config.discordPresenceServerName}`,
+                name: `${playerAmount.online} ${playerAmount.online === 1 ? config.discordPresence.singular : config.discordPresence.plural}${config.discordPresence.status}`,
                 type: ActivityType.Playing
             }]
         });
