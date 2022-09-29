@@ -2,7 +2,7 @@
 # discordlink Plugin
 The plugin for bdsx
 
-To use it, run the plugin once or make a `config.json` file in bdsx\plugin-configs\discord-chat\ with the following contents:
+To use it, run the plugin once or make a `config.json` file in (bdsx root folder)\plugin-configs\discord-chat\ with the following contents:
 
 ```json
 {
