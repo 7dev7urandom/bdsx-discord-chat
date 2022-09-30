@@ -11,31 +11,63 @@ import { TextPacket } from "bdsx/bds/packets";
 import { defaultConfig } from "./defaultconfig";
 import * as which from "which";
 import * as path from "path";
+import { readFileSync } from "fs";
 
 let proc: ChildProcess;
 let config: any;
-const configPath = path.join(fsutil.projectPath, "plugin-configs/discord-chat/config.json");
+const configPath = path.join(
+    fsutil.projectPath,
+    "plugin-configs/discord-chat/config.json"
+);
 
 if (!fsutil.isFileSync(configPath)) {
+    const oldConfigPath = path.join(fsutil.projectPath, "discordconfig.json");
+    let oldConfig: any;
+    try {
+        oldConfig = JSON.parse(readFileSync(oldConfigPath).toString());
+    } catch (e) {
+        oldConfig = {};
+    }
     const pcDir = path.join(fsutil.projectPath, "plugin-configs/");
     const dcDir = path.join(fsutil.projectPath, "plugin-configs/discord-chat/");
     if (!fsutil.isDirectorySync(pcDir)) {
         fsutil.mkdir(pcDir).then(
-            (onfulfilled)=>{},
-            (onrejected)=>{ console.log(`[discord-chat] Error creating default config.json file ${onrejected}`)}
-        )
+            (onfulfilled) => { },
+            (onrejected) => {
+                console.log(
+                    `[discord-chat] Error creating default config.json file ${onrejected}`
+                );
+            }
+        );
     }
     if (!fsutil.isDirectorySync(dcDir)) {
         fsutil.mkdir(dcDir).then(
-            (onfulfilled)=>{},
-            (onrejected)=>{ console.log(`[discord-chat] Error creating default config.json file ${onrejected}`)}
-        )
+            (onfulfilled) => { },
+            (onrejected) => {
+                console.log(
+                    `[discord-chat] Error creating default config.json file ${onrejected}`
+                );
+            }
+        );
     }
-    if(!fsutil.isFileSync(configPath)){
-        fsutil.writeFile(configPath,JSON.stringify(defaultConfig, null, 2)).then(
-            (onfulfilled)=>{ console.log("[discord-chat] Created a default config.json file.\n[discord-chat] Please set your configuration values in the config.json!");},
-            (onrejected)=>{ console.log(`[discord-chat] Error creating default config.json file ${onrejected}`)}
-        )
+    if (!fsutil.isFileSync(configPath)) {
+        fsutil
+            .writeFile(
+                configPath,
+                JSON.stringify({ ...defaultConfig, ...oldConfig }, null, 2)
+            )
+            .then(
+                (onfulfilled) => {
+                    console.log("[discord-chat] Created a default config.json file.");
+                    if (oldConfig.token) console.log("[discord-chat] Your old config was migrated.");
+                    console.log("[discord-chat] Please set your configuration values in the config.json!");
+                },
+                (onrejected) => {
+                    console.log(
+                        `[discord-chat] Error creating default config.json file ${onrejected}`
+                    );
+                }
+            );
     }
 }
 
@@ -63,14 +95,18 @@ which("node", {}, (err, nodePath) => {
         fsutil.readFile(configPath).then((data) => {
             config = JSON.parse(data);
             const { channel, token } = config;
-            proc.send({ event: "ready", token, channel });
+            proc.send({ event: "ready" });
         });
-        proc.on("message", (data) => {
+        proc.on("message", (data: any) => {
             if (data.event === "command") {
-                if(data.command === "list") proc.send({event: "commandReturn", returnValue: listCommand()}) ;
+                if (data.command === "list")
+                    proc.send({
+                        event: "commandReturn",
+                        returnValue: listCommand(),
+                    });
             }
         });
-        proc.on("message", (data) => {
+        proc.on("message", (data: any) => {
             if (data.event === "message") {
                 tellAllRaw(data.message);
             }
@@ -95,21 +131,30 @@ function tellAllRaw(text: string) {
     }
     packet.dispose();
 }
-function listCommand(){
-    const list = bedrockServer.executeCommand('list', CommandResultType.Data);
+function listCommand() {
+    const list = bedrockServer.executeCommand("list", CommandResultType.Data);
     return list.data.statusMessage;
 }
 events.packetBefore(MinecraftPacketIds.Text).on((ev) => {
-    if (config.forceGameChat || playerSettings.get(ev.name) === ChatSettings.All) {
-        proc.send({ event: "message", message: `${config.toDiscordChatPrefix.start}${ev.name}${config.toDiscordChatPrefix.end}${ev.message}` });
-        tellAllRaw(`${config.inGameChatPrefix.start}${ev.name}${config.inGameChatPrefix.end}${ev.message}`);
+    if (
+        config.forceGameChat ||
+        playerSettings.get(ev.name) === ChatSettings.All
+    ) {
+        proc.send({
+            event: "message",
+            message: `${config.toDiscordChatPrefix.start}${ev.name}${config.toDiscordChatPrefix.end}${ev.message}`,
+        });
+        tellAllRaw(
+            `${config.inGameChatPrefix.start}${ev.name}${config.inGameChatPrefix.end}${ev.message}`
+        );
         return CANCEL;
     }
 });
 
 events.serverOpen.on(() => {
-    if(config.discordStartStopMessagesEnabled) proc.send({ event: "message", message: config.discordStartMessage });
-    if(!config.forceGameChat){
+    if (config.discordStartStopMessagesEnabled)
+        proc.send({ event: "message", message: config.discordStartMessage });
+    if (!config.forceGameChat) {
         command.register("chat", "Changes chat target").overload(
             ({ target }, origin) => {
                 if (!origin.getEntity()?.isPlayer()) return;
@@ -129,27 +174,40 @@ events.serverOpen.on(() => {
             {
                 target: CommandRawText,
             }
-        ); 
+        );
     }
 });
 
-events.playerJoin.on((evt)=>{
-    if(config.discordJoinLeftMessagesEnabled) proc.send({ event: "message", message: `${config.discordJoinMessage.start}${evt.player.getName()}${config.discordJoinMessage.end}` });
-    if(config.discordPresenceEnabled) proc.send({ event: "presence", message: "+"})
+events.playerJoin.on((evt) => {
+    if (config.discordJoinLeftMessagesEnabled)
+        proc.send({
+            event: "message",
+            message: `${config.discordJoinMessage.start
+                }${evt.player.getName()}${config.discordJoinMessage.end}`,
+        });
+    if (config.discordPresenceEnabled)
+        proc.send({ event: "presence", message: "+" });
 });
-events.playerLeft.on((evt)=>{
-    if(config.discordJoinLeftMessagesEnabled) proc.send({ event: "message", message: `${config.discordLeftMessage.start}${evt.player.getName()}${config.discordLeftMessage.end}` });
-    if(config.discordPresenceEnabled) proc.send({ event: "presence", message: "-"})
+events.playerLeft.on((evt) => {
+    if (config.discordJoinLeftMessagesEnabled)
+        proc.send({
+            event: "message",
+            message: `${config.discordLeftMessage.start
+                }${evt.player.getName()}${config.discordLeftMessage.end}`,
+        });
+    if (config.discordPresenceEnabled)
+        proc.send({ event: "presence", message: "-" });
 });
 
 events.serverLeave.on(() => {
     proc.send({ event: "message", message: config.discordStopMessage });
-    if(config.discordPresenceEnabled) proc.send({ event: "presence", message: "stop"})
+    if (config.discordPresenceEnabled)
+        proc.send({ event: "presence", message: "stop" });
 });
 events.serverClose.on(() => {
     proc.send({ event: "destroy" });
 });
 
 export function sendToDiscord(msg: string) {
-    proc.send({ event: "message", message: msg});
+    proc.send({ event: "message", message: msg });
 }
