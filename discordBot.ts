@@ -93,7 +93,7 @@ function start(token: string, channelId: string) {
                 if (interaction.commandName === "list" && !interaction.replied) {
                     slashCommand("list");
                 }
-                process.on("message", (data) => {
+                process.on("message", (data: any) => {
                     if (data.event === "commandReturn" && !interaction.replied) {
                         interaction.reply(data.returnValue);
                     }else if (data.event === "commandReturn" && interaction.replied) {
