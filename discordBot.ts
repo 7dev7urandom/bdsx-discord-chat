@@ -88,7 +88,7 @@ function start(token: string, channelId: string) {
             );
         });
         if (config.discordSlashCommandEnabled) { 
-            client.on("interactionCreate", async interaction => {
+            client.on("interactionCreate", async (interaction) => {
                 if (!interaction.isChatInputCommand()) return;
                 if (interaction.commandName === "list" && !interaction.replied) {
                     slashCommand("list");
