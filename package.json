@@ -1,6 +1,6 @@
 {
   "name": "@bdsx/discord-chat",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Creates a link to your discord server via a bot",
   "main": "index.js",
   "keywords": [],

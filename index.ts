@@ -98,17 +98,20 @@ which("node", {}, (err, nodePath) => {
             proc.send({ event: "ready" });
         });
         proc.on("message", (data: any) => {
-            if (data.event === "command") {
-                if (data.command === "list")
-                    proc.send({
-                        event: "commandReturn",
-                        returnValue: listCommand(),
-                    });
-            }
-        });
-        proc.on("message", (data: any) => {
             if (data.event === "message") {
                 tellAllRaw(data.message);
+            }else if (data.event === "command") {
+                if (data.command === "list"){
+                    proc.send(
+                        {
+                            event: "commandReturn",
+                            returnValue: listCommand(),
+                        }, 
+                        undefined, 
+                        undefined, 
+                        (e) => { if (e !== null) console.log("[discord-chat] / Command Error: ", e); }
+                    );
+                }
             }
         });
     });

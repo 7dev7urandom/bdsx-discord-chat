@@ -87,18 +87,21 @@ function start(token: string, channelId: string) {
                 `${config.toInGameChatPrefix.start}${discordName}${config.toInGameChatPrefix.end}${message.content}`
             );
         });
-        if (config.discordSlashCommandEnabled)
+        if (config.discordSlashCommandEnabled) { 
             client.on("interactionCreate", async (interaction) => {
                 if (!interaction.isChatInputCommand()) return;
-                if (interaction.commandName === "list") {
+                if (interaction.commandName === "list" && !interaction.replied) {
                     slashCommand("list");
                 }
                 process.on("message", (data: any) => {
-                    if (data.event === "commandReturn") {
+                    if (data.event === "commandReturn" && !interaction.replied) {
                         interaction.reply(data.returnValue);
+                    }else if (data.event === "commandReturn" && interaction.replied) {
+                        interaction.editReply(data.returnValue);
                     }
                 });
             });
+        }
         process.on("message", (data: any) => {
             if (data.event === "message") {
                 channel.send(data.message);
@@ -126,6 +129,15 @@ function start(token: string, channelId: string) {
                 console.log("Discord client destroyed");
                 process.exit(0);
             }
+        });
+        process.on("unhandledRejection", async (err) => {
+            console.error("Unhandled Promise Rejection:\n", err);
+        });
+        process.on("uncaughtException", async (err) => {
+            console.error("Uncaught Promise Exception:\n", err);
+        });
+        process.on("warning", async (err) => {
+            console.error("Multiple Resolves:\n", err);
         });
     });
 }
